@@ -41,7 +41,15 @@ main =
     --   (\vp x m -> m)
 
 updateFunc :: Float -> World -> World
-updateFunc t w = w
+updateFunc t (World (Player (x, y) dir (vx, vy)) a b c)   = (World (Player (dx, dy) dir (vx, vy)) a b c)
+  -- | dir == UP = (World (Player (x, y + d) dir) a b c) 
+  -- | dir == DOWN = (World (Player (x, y - d) dir) a b c) 
+  -- | dir == LEFT = (World (Player (x + d, y) dir) a b c) 
+  -- | dir == RIGHT = (World (Player (x - d, y) dir) a b c) 
+  -- | otherwise = (World (Player (x, y) dir) a b c) 
+  where 
+    dx = x + vx * t
+    dy = y + vy * t
 
 drawFunc :: World -> Picture
 drawFunc world = Pictures (getNodePics world)
@@ -50,32 +58,44 @@ getNodePics :: World -> [Picture]
 getNodePics w = drawPlayer w : genCircles (getPoints w)
 
 drawPlayer :: World -> Picture
-drawPlayer (World (x, y) _ _ _) = Color black (translate a b (Circle 15))
+drawPlayer (World (Player (x, y) _ _) _ _ _) = Color black (translate a b (Circle 15))
  where
-    a = fromIntegral (x * 100)
-    b = fromIntegral (y * 100)
+    a = x * 100 - 150
+    b = y * 100 - 150
 
 genCircles :: [(Int, Int)] -> [Picture]
 genCircles [] = []
 genCircles ((x, y):pts) = Color red (translate a b (Circle 20)) : genCircles pts
   where
-    a = fromIntegral (x * 100)
-    b = fromIntegral (y * 100)
+    a = fromIntegral (x * 100 - 150)
+    b = fromIntegral (y * 100 - 150)
 
 getPoints :: World -> [(Int, Int)]
 getPoints (World _ _ _ (Grid points)) = points
 
 data Grid = Grid [(Int, Int)]
+  deriving (Show)
 
 data World = World {
-  playerLocation :: (Int, Int),
+  player :: Player,
   start :: (Int, Int),
   end :: (Int, Int),
   grid :: Grid
 }
+  deriving (Show)
+
+data Player = Player {
+  playerLocation :: (Float, Float),
+  direction :: Direction, 
+  velocity :: (Float, Float)
+}
+  deriving (Show)
+
+data Direction = UP | DOWN | LEFT | RIGHT | NONE
+  deriving (Enum, Eq, Show)
 
 getWorld :: World
-getWorld = World (0, 0) (0, 0) (3, 3) (Grid (getGrid 3 3))
+getWorld = World (Player (0, 0) NONE (0, 0)) (0, 0) (3, 3) (Grid (getGrid 3 3))
 
 getGrid :: Int -> Int -> [(Int, Int)]
 getGrid l w = [(x, y) | x <- [0..l], y <- [0..w]]
@@ -88,14 +108,22 @@ handleEvent (EventKey (SpecialKey KeyRight) Down _ _) w = moveRight w
 handleEvent _ w = w
 
 moveUp :: World -> World
-moveUp (World (x, y) (s1, s2) (e1, e2) (Grid points))
-  | y < e2 = World (x, y + 1) (s1, s2) (e1, e2) (Grid points)
-  | otherwise = (World (x, y) (s1, s2) (e1, e2) (Grid points))
+moveUp (World (Player (x, y) _ _) (s1, s2) (e1, e2) (Grid points)) =
+  (World (Player (x, y) UP (0.0, 1.0)) (s1, s2) (e1, e2) (Grid points))
+  -- | y < e2 = World (x, y + 1) (s1, s2) (e1, e2) (Grid points)
+  -- | otherwise = (World (x, y) (s1, s2) (e1, e2) (Grid points))
   
-moveDown = undefined
-moveLeft = undefined
-moveRight :: a
-moveRight = undefined
+moveDown :: World -> World
+moveDown (World (Player (x, y) _ _) (s1, s2) (e1, e2) (Grid points)) =
+  (World (Player (x, y) DOWN (0.0, -1.0)) (s1, s2) (e1, e2) (Grid points))
+  
+moveLeft :: World -> World
+moveLeft (World (Player (x, y) _ _) (s1, s2) (e1, e2) (Grid points)) =
+  (World (Player (x, y) LEFT (-1.0, 0.0)) (s1, s2) (e1, e2) (Grid points))
+
+moveRight :: World -> World
+moveRight (World (Player (x, y) _ _) (s1, s2) (e1, e2) (Grid points)) =
+  (World (Player (x, y) RIGHT (1.0, 0.0)) (s1, s2) (e1, e2) (Grid points))
 
 specialKeyPressed :: Event -> Bool
 specialKeyPressed (EventKey (Char k) _ _ _) = k == 'g'
@@ -115,79 +143,3 @@ specialKeyPressed _ = False
 
 mainWindow :: Display
 mainWindow = InWindow "Nice Window" (700, 700) (10,10)
-
-
-
-
-----------------------------------------------
-
-module Board where
-
---                      (up,    down,  left,  right)
-data Graph = Nil | Node (Graph, Graph, Graph, Graph) Int Int
-    deriving (Eq, Show)
-
--- take in (1) the x size, (2) y size, return a list of iterative coordinates
-getCoords :: Int -> Int -> [(Int, Int)]
-getCoords l w = [(x, y) | x <- [0..l], y <- [0..w]]
-
-getNodes ::  [(Int, Int)] -> [Graph]
-getNodes = map go
-    where 
-        go (x, y) = Node (Nil, Nil, Nil, Nil) x y
-
-connectNodes :: [Graph] -> [Graph]
-connectNodes nodes = connectRows nodes
-    -- where 
-        -- r =  
-        -- l = connectLeft r
-        -- u = connectUp l
-        -- finished = connectDown u
-
-connectRows :: [Graph] -> [Graph]
--- connectRight ((Node (u1, d1, l1, r1) x1 y1) : (Node (u2, d2, l2, r2) x2 y2) : nodes) 
---     | 
-
-connectRows (n:nodes) = connL (connR sameRows)
-    where 
-        sameRows = allNodesInRow (getRow n) (n:nodes)
-        -- ascending = sortAscending sameRows
-
-connR :: [Graph] -> [Graph]
-connR [n] = [n]
-connR ((Node (u1, d1, l1, r1) x1 y1):(Node (u2, d2, l2, r2) x2 y2):nodes) =
-    (Node (u1, d1, l1, (Node (u2, d2, l2, r2) x2 y2)) x1 y1) : connR (((Node (u2, d2, l2, r2) x2 y2)): nodes)
-
-connL :: [Graph] -> [Graph]
-connL [n] = [n]
-connL ((Node (u1, d1, l1, r1) x1 y1):(Node (u2, d2, l2, r2) x2 y2):nodes) =
-    (Node (u1, d1, l1, r2) x1 y1) 
-    : (Node (u2, d2, (Node (u1, d1, l1, r2) x1 y1) , r2) x2 y2)
-    : connR ((Node (u2, d2, (Node (u1, d1, l1, r2) x1 y1) , r2) x2 y2): nodes)
-
-connectLeft :: [Graph] -> [Graph]
-connectLeft = undefined
-
-connectUp :: [Graph] -> [Graph]
-connectUp = undefined
-
-connectDown :: [Graph] -> [Graph]
-connectDown = undefined
-
-allNodesInRow :: Int -> [Graph] -> [Graph]
-allNodesInRow row nodes = filter pred nodes
-    where 
-        pred (Node (_) x y) = y == row
-
-allNodesInCol :: Int -> [Graph] -> [Graph]
-allNodesInCol col nodes = filter pred nodes
-    where 
-        pred (Node (_) x y) = x == col
-
-getRow :: Graph -> Int
-getRow (Node (_) r _) = r
-
-getCol :: Graph -> Int
-getCol (Node (_) _ c) = c
--- genPath
-
