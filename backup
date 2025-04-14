@@ -115,3 +115,79 @@ specialKeyPressed _ = False
 
 mainWindow :: Display
 mainWindow = InWindow "Nice Window" (700, 700) (10,10)
+
+
+
+
+----------------------------------------------
+
+module Board where
+
+--                      (up,    down,  left,  right)
+data Graph = Nil | Node (Graph, Graph, Graph, Graph) Int Int
+    deriving (Eq, Show)
+
+-- take in (1) the x size, (2) y size, return a list of iterative coordinates
+getCoords :: Int -> Int -> [(Int, Int)]
+getCoords l w = [(x, y) | x <- [0..l], y <- [0..w]]
+
+getNodes ::  [(Int, Int)] -> [Graph]
+getNodes = map go
+    where 
+        go (x, y) = Node (Nil, Nil, Nil, Nil) x y
+
+connectNodes :: [Graph] -> [Graph]
+connectNodes nodes = connectRows nodes
+    -- where 
+        -- r =  
+        -- l = connectLeft r
+        -- u = connectUp l
+        -- finished = connectDown u
+
+connectRows :: [Graph] -> [Graph]
+-- connectRight ((Node (u1, d1, l1, r1) x1 y1) : (Node (u2, d2, l2, r2) x2 y2) : nodes) 
+--     | 
+
+connectRows (n:nodes) = connL (connR sameRows)
+    where 
+        sameRows = allNodesInRow (getRow n) (n:nodes)
+        -- ascending = sortAscending sameRows
+
+connR :: [Graph] -> [Graph]
+connR [n] = [n]
+connR ((Node (u1, d1, l1, r1) x1 y1):(Node (u2, d2, l2, r2) x2 y2):nodes) =
+    (Node (u1, d1, l1, (Node (u2, d2, l2, r2) x2 y2)) x1 y1) : connR (((Node (u2, d2, l2, r2) x2 y2)): nodes)
+
+connL :: [Graph] -> [Graph]
+connL [n] = [n]
+connL ((Node (u1, d1, l1, r1) x1 y1):(Node (u2, d2, l2, r2) x2 y2):nodes) =
+    (Node (u1, d1, l1, r2) x1 y1) 
+    : (Node (u2, d2, (Node (u1, d1, l1, r2) x1 y1) , r2) x2 y2)
+    : connR ((Node (u2, d2, (Node (u1, d1, l1, r2) x1 y1) , r2) x2 y2): nodes)
+
+connectLeft :: [Graph] -> [Graph]
+connectLeft = undefined
+
+connectUp :: [Graph] -> [Graph]
+connectUp = undefined
+
+connectDown :: [Graph] -> [Graph]
+connectDown = undefined
+
+allNodesInRow :: Int -> [Graph] -> [Graph]
+allNodesInRow row nodes = filter pred nodes
+    where 
+        pred (Node (_) x y) = y == row
+
+allNodesInCol :: Int -> [Graph] -> [Graph]
+allNodesInCol col nodes = filter pred nodes
+    where 
+        pred (Node (_) x y) = x == col
+
+getRow :: Graph -> Int
+getRow (Node (_) r _) = r
+
+getCol :: Graph -> Int
+getCol (Node (_) _ c) = c
+-- genPath
+
