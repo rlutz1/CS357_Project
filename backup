@@ -1,0 +1,117 @@
+module Main where
+
+import Brillo
+import Brillo.Interface.IO.Game
+-- import Board
+
+main :: IO ()
+main = 
+  do
+    let window = mainWindow
+    let world = getWorld
+    play 
+      window
+      white
+      100
+      world
+      drawFunc
+      handleEvent            
+      updateFunc
+    -- play 
+    --   window
+    --   white
+    --   100
+    --   world
+    --   -- (\world -> translate 50 50 world)
+    --   id
+    --   handleEvent            
+    --   (\_ cir -> cir)
+
+    -- animate 
+    --   window
+    --   white 
+    --   (\t -> getWorld t)
+
+    -- simulate
+    --   window 
+    --   white
+    --   100
+    --   getWorld
+    --   id
+    --   (\vp x m -> m)
+
+updateFunc :: Float -> World -> World
+updateFunc t w = w
+
+drawFunc :: World -> Picture
+drawFunc world = Pictures (getNodePics world)
+
+getNodePics :: World -> [Picture]
+getNodePics w = drawPlayer w : genCircles (getPoints w)
+
+drawPlayer :: World -> Picture
+drawPlayer (World (x, y) _ _ _) = Color black (translate a b (Circle 15))
+ where
+    a = fromIntegral (x * 100)
+    b = fromIntegral (y * 100)
+
+genCircles :: [(Int, Int)] -> [Picture]
+genCircles [] = []
+genCircles ((x, y):pts) = Color red (translate a b (Circle 20)) : genCircles pts
+  where
+    a = fromIntegral (x * 100)
+    b = fromIntegral (y * 100)
+
+getPoints :: World -> [(Int, Int)]
+getPoints (World _ _ _ (Grid points)) = points
+
+data Grid = Grid [(Int, Int)]
+
+data World = World {
+  playerLocation :: (Int, Int),
+  start :: (Int, Int),
+  end :: (Int, Int),
+  grid :: Grid
+}
+
+getWorld :: World
+getWorld = World (0, 0) (0, 0) (3, 3) (Grid (getGrid 3 3))
+
+getGrid :: Int -> Int -> [(Int, Int)]
+getGrid l w = [(x, y) | x <- [0..l], y <- [0..w]]
+
+handleEvent :: Event -> World -> World
+handleEvent (EventKey (SpecialKey KeyUp) Down _ _) w = moveUp w
+handleEvent (EventKey (SpecialKey KeyDown) Down _ _) w = moveDown w
+handleEvent (EventKey (SpecialKey KeyLeft) Down _ _) w = moveLeft w
+handleEvent (EventKey (SpecialKey KeyRight) Down _ _) w = moveRight w
+handleEvent _ w = w
+
+moveUp :: World -> World
+moveUp (World (x, y) (s1, s2) (e1, e2) (Grid points))
+  | y < e2 = World (x, y + 1) (s1, s2) (e1, e2) (Grid points)
+  | otherwise = (World (x, y) (s1, s2) (e1, e2) (Grid points))
+  
+moveDown = undefined
+moveLeft = undefined
+moveRight :: a
+moveRight = undefined
+
+specialKeyPressed :: Event -> Bool
+specialKeyPressed (EventKey (Char k) _ _ _) = k == 'g'
+specialKeyPressed _ = False
+
+-- main = play (InWindow "GameEvent" (700, 100) (10, 10)) -- DISPLAY
+--         white -- background color of window
+--         100 -- num simulation steps for each second of real time?
+--         "" -- initial world
+--         (\str     -> Translate (-340) 0 $ Scale 0.1 0.1 $ Text str) -- world to picture
+--         (\event _ -> show event) -- handle the input event
+--         (\_ world -> world) -- function to step world one iteration
+-- main = display
+  -- mainWindow
+  -- white
+  -- (Color black (Line [(0,0), (10,10)]))
+
+mainWindow :: Display
+mainWindow = InWindow "Nice Window" (700, 700) (10,10)
