@@ -1,5 +1,64 @@
 module Main where
 
+{-
+
+data World = {
+    board :: Board
+    player :: Player
+    ghosts :: [Ghost]
+  }
+
+data Board = {
+    tiles :: [Tile] -- for display
+    tracks :: [Track] -- for actual movement
+  } 
+
+data Tile = Wall Color Boundary | Path Color Boundary -- purely for drawing the tile map, aesthetics alone
+-- 
+data Track = Track Float Float 
+
+data Boundary = {
+    b :: Bottom
+    t :: Top
+    l :: Left
+    r :: Right
+  }
+type Bottom = Float -- for ease of reading lol
+type Top = Float
+type Left = Float
+type Right = Float
+
+
+
+
+
+
+    deriving (Eq, Show)   
+data Direction = UP | DOWN | LEFT | RIGHT | NONE
+    deriving (Enum, Eq, Show)
+data Tile = Tile (Zone, Node)
+    deriving (Eq, Show)
+data Point = Point (Float, Float)
+    deriving (Eq, Show)
+data Node = None | Wall | Path Center Zone [Direction]
+    deriving (Eq, Show)
+-- data Node = Wall | Path Center Zone (Neighbors [(Direction, Node)])
+--     deriving (Eq, Show)
+data Center = Center Point
+    deriving (Eq, Show)
+data Zone = Zone Float Float Float Float
+    deriving (Eq, Show)
+data Neighbors = Neighbors [(Direction, Node)]
+    deriving (Eq, Show)
+
+
+-}
+
+
+
+
+
+
 import Brillo
 import Brillo.Interface.IO.Game
 import Board
@@ -49,11 +108,11 @@ drawFunc :: World -> Picture
 drawFunc world = Pictures (drawGame world)
 
 drawGame :: World -> [Picture]
-drawGame (World p b) = drawPlayer p : drawBoard b
+drawGame (World p b) = drawBoard b ++ ((Color black (translate 500 500 (Circle 10))): (Color black ((Circle 10))) : drawPlayer p : [] ) 
 -- getNodePics w = drawPlayer w : genCircles (getPoints w)
 
 drawPlayer :: Player -> Picture -- todo no offset for now
-drawPlayer (Player (x, y) _ _ _) = Color black (translate a b (Circle 15))
+drawPlayer (Player (x, y) _ _ _) = Color black ((translate x y) (Circle 15))
  where
     a = x * 100 - 150 -- off set not used right now
     b = y * 100 - 150
@@ -63,14 +122,12 @@ drawBoard (Board []) = []
 drawBoard (Board (t:ts)) = drawTile t : drawBoard (Board (ts))
 
 drawTile :: Tile -> Picture
-drawTile (Tile ((Zone xStart xEnd1 yStart yEnd1), Wall)) = Color blue (translate a1 b1 (Circle 20))
-  where
-      a1 = xEnd1 * 100 - 150 -- off set not used right now
-      b1 = yEnd1 * 100 - 150
-drawTile (Tile ((Zone xStart xEnd2 yStart yEnd2), _)) = Color red (translate a2 b2 (Circle 20))
-  where
-    a2 = xEnd2 * 100 - 150 -- off set not used right now
-    b2 = yEnd2 * 100 - 150
+drawTile (Tile ((Zone xStart1 xEnd1 yStart1 yEnd1), Wall)) = 
+  Color blue ((Polygon [(xStart1, yStart1), (xEnd1, yStart1), (xEnd1, yEnd1), (xStart1, yEnd1)]))
+drawTile (Tile ((Zone xStart2 xEnd2 yStart2 yEnd2), _)) = 
+  Color red ((Polygon [(xStart2, yStart2), (xEnd2, yStart2), (xEnd2, yEnd2), (xStart2, yEnd2)]))
+
+
 
 genCircles :: [(Int, Int)] -> [Picture]
 genCircles [] = []
@@ -103,7 +160,7 @@ data Player = Player {
 --   deriving (Enum, Eq, Show)
 
 getWorld :: World
-getWorld = World  (Player (0, 0) NONE NONE (0, 0)) (genLevel 1)
+getWorld = World  (Player (-75, -75) NONE NONE (0, 0)) (genLevel 1)
 
 -- getGrid :: Int -> Int -> [(Int, Int)]
 -- getGrid l w = [(x, y) | x <- [0..l], y <- [0..w]]
@@ -120,18 +177,42 @@ tryMove (World (Player pos curr next v) b) dir =
   (World (Player pos curr dir v) b)
 
 move :: World -> Direction -> Float -> World
-move (World (Player (x, y) curr next (vx, vy)) b) dir t =
-  (World (Player (dx, dy) dir next (getVelocity dir)) b)
+move (World (Player (x, y) curr next (vx, vy)) b) dir t
+  | validMove (Player (x, y) curr next (vx, vy)) dir b = (World (Player (dx, dy) dir next (getVelocity dir)) b)
+  | otherwise = (World (Player (dx, dy) curr next (vx, vy)) b) -- do nothing
   where 
-    dx = x + vx * t
-    dy = y + vy * t
+    dx = x + vx * 0.01
+    dy = y + vy * 0.01
+
+-- move (World (Player (x, y) curr next (vx, vy)) b) dir t =
+--   (World (Player (dx, dy) dir next (getVelocity dir)) b)
+--   where 
+--     dx = x + vx * t
+--     dy = y + vy * t
+
+{- 
+we want to 
+(1) see where the player is: Zone -> Node
+(2) see if that's a valid direction from there
+-}
+validMove :: Player -> Direction -> Board -> Bool
+validMove (Player (x, y) _ _ _) dir b =
+  -- do 
+    -- something dirs
+    elem dir dirs 
+  where 
+    currNode = getNode (Point (x, y)) b
+    dirs = getDirs currNode
+
+something :: [Direction] -> IO()
+something dirs = print dirs 
 
 getVelocity :: Direction -> (Float, Float)
 getVelocity dir
-  | dir == UP    = (0.0,  1.0)
-  | dir == DOWN  = (0.0, -1.0)
-  | dir == LEFT  = (-1.0, 0.0)
-  | dir == RIGHT = ( 1.0, 0.0)
+  | dir == UP    = (0.0,  85.0)
+  | dir == DOWN  = (0.0, -85.0)
+  | dir == LEFT  = (-85.0, 0.0)
+  | dir == RIGHT = ( 85.0, 0.0)
   | otherwise = (0, 0)
 
 specialKeyPressed :: Event -> Bool
@@ -139,4 +220,4 @@ specialKeyPressed (EventKey (Char k) _ _ _) = k == 'g'
 specialKeyPressed _ = False
 
 mainWindow :: Display
-mainWindow = InWindow "Nice Window" (700, 700) (10,10)
+mainWindow = InWindow "Nice Window" (1000, 1000) (100, 100)
