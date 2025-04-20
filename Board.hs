@@ -10,7 +10,7 @@ data Tile = Tile (Zone, Node)
     deriving (Eq, Show)
 data Point = Point (Float, Float)
     deriving (Eq, Show)
-data Node = Wall | Path Center Zone [Direction]
+data Node = None | Wall | Path Center Zone [Direction]
     deriving (Eq, Show)
 -- data Node = Wall | Path Center Zone (Neighbors [(Direction, Node)])
 --     deriving (Eq, Show)
@@ -53,20 +53,33 @@ lvl1Walls :: [Point]
 lvl1Walls =  [Point (1, 2), Point (3, 3), Point (3, 2)]
 
 constructZone :: Point -> Zone
-constructZone (Point (x, y)) = Zone (x - 1) (x) (y - 1) (y)
+constructZone (Point (x, y)) = Zone (offset (x - 1)) (offset x) (offset (y - 1)) (offset y)
 
 constructNode :: Point -> [Point] -> Node
 constructNode p walls = Path (getCenter p) (constructZone p) (possibleDirections p walls)
 
 getCenter :: Point -> Center
-getCenter (Point (x, y)) = Center (Point (x - 0.5, y - 0.5)) -- very simple for now
+getCenter (Point (x, y)) = Center (Point (offset x - 50, offset y - 50)) -- very simple for now
 
 possibleDirections :: Point -> [Point] -> [Direction]
 possibleDirections p walls  = filter (\d -> d /= NONE) ds
     where 
         ds = (up p walls) : (down p walls) : (left p walls) : (right p walls) : []
     
+getNode :: Point -> Board -> Node
+getNode _ (Board []) = None
+getNode (Point (x, y)) (Board ((Tile (Zone x1 x2 y1 y2, node)):tiles))
+    | and [xStart >= x1 + 20, xEnd <= x2 - 20, yStart >= y1 + 20, yEnd <= y2 - 20] = node
+    | otherwise = getNode (Point (x, y)) (Board tiles)
+    where
+        xStart = fromInteger (floor  x)
+        xEnd = fromInteger (ceiling x)
+        yStart = fromInteger (floor y)
+        yEnd = fromInteger (ceiling y)
 
+getDirs :: Node -> [Direction]
+getDirs (Path _ _ d) = d
+getDirs _ = []
 
 up :: Point -> [Point] -> Direction
 up (Point (x, y)) walls
@@ -88,6 +101,9 @@ left (Point (x, y)) walls
     | otherwise = LEFT
     where 
         leftP = Point (x - 1, y)
+
+offset :: Float -> Float
+offset x = x * 50 - 100
 
 right :: Point -> [Point] -> Direction
 right (Point (x, y)) walls
